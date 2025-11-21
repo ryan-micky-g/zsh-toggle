@@ -1,0 +1,40 @@
+# My Alias List
+alias ..='cd ..'
+alias ls='ls -Al'
+alias l='/bin/ls'
+alias attach='tmux a'
+alias new='tmux'
+alias list='tmux ls'
+alias mypubkey="pbcopy < $HOME/.ssh/id_rsa.pub"
+alias asitop='sudo /opt/homebrew/bin/asitop'
+alias unjail='xattr -d com.apple.quarantine'
+alias wupdate="$HOME/webui/bin/pip3 install --upgrade open-webui"
+alias wstart="$HOME/webui/bin/open-webui serve"
+alias VMspace='ncdu ~/SSD/VMs'
+alias ff='fastfetch'
+alias LANscan='sudo arp-scan --localnet'
+alias bupdate='brew update'
+alias bupgrade='brew upgrade'
+alias boutdated='brew outdated'
+alias bsearch='brew search'
+alias bupgrade-all='brew update && brew upgrade && brew cleanup'
+alias bremove='brew remove'
+alias binstall='brew install'
+alias breinstall='brew reinstall'
+alias binfo='brew info'
+alias blist='brew list'
+alias bdoctor='brew doctor'
+alias bcleanup='brew cleanup'
+alias bdeps='brew deps --tree'
+alias bneeds='brew uses --installed'
+alias bleaves='brew leaves'
+alias bservices='brew services list'
+alias bstart='brew services start'
+alias bstop='brew services stop'
+alias brestart='brew services restart'
+
+backup-exaggerated() {
+   pushd "$HOME" > /dev/null || return 1
+   tar czf ./EXAG.tar.gz --directory=./exaggerated . && \
+   popd > /dev/null
+}
