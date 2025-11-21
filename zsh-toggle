@@ -1,0 +1,235 @@
+# Set history size
+HISTSIZE=50000
+SAVEHIST=50000
+HISTFILE=~/.zsh_history
+
+# History improvements
+setopt APPEND_HISTORY  # Appends history to the file, rather than overwriting
+setopt SHARE_HISTORY   # Shares history immediately across all running shells
+setopt HIST_IGNORE_DUPS # Don't save a command if it's identical to the previous one
+setopt HIST_IGNORE_ALL_DUPS # If you type a command, delete older instances of it
+setopt HIST_IGNORE_SPACE # Don't save commands that start with a space
+setopt HIST_FIND_NO_DUPS # When searching, show the newest entry of a duplicate
+
+# My Alias List
+alias ..='cd ..'
+alias ls='ls -Al'
+alias la='ls -A'
+alias l='/bin/ls'
+alias attach='tmux a'
+alias new='tmux'
+alias list='tmux ls'
+alias mypubkey="pbcopy < $HOME/.ssh/id_rsa.pub"
+alias asitop='sudo /opt/homebrew/bin/asitop'
+alias unjail='xattr -d com.apple.quarantine'
+alias wupdate="$HOME/webui/bin/pip3 install --upgrade open-webui"
+alias wstart="$HOME/webui/bin/open-webui serve"
+alias VMspace='ncdu ~/SSD/VMs'
+alias ff='fastfetch'
+alias LANscan='sudo arp-scan --localnet'
+alias bupdate='brew update'
+alias bupgrade='brew upgrade'
+alias boutdated='brew outdated'
+alias bsearch='brew search'
+alias bupgrade-all='brew update && brew upgrade && brew cleanup'
+alias bremove='brew remove'
+
+
+backup-exaggerated() {
+   pushd "$HOME" > /dev/null || return 1
+   tar czf ./EXAG.tar.gz --directory=./exaggerated . && \
+   popd > /dev/null
+}
+
+# 1. Define the persistent global variables.
+#    These are needed by toggle() and precmd().
+typeset -a BSDPATH_array
+typeset -a GNUPATH_array
+typeset -a OFF_array
+export GNU_UTILS_ACTIVE=1 # Set default state (1 = GNU, 0 = BSD, -1 = OFF)
+
+# 2. Define a setup function to populate the global arrays.
+#    This keeps temporary variables out of the global scope.
+_setup_path_toggle() {
+    # Use 'local' to scope these variables *only* to this function.
+    
+    # Capture the raw system path *before* we add anything
+    local -a base_system_path
+    base_system_path=($path)
+
+    # Define all our path components
+    local -a user_paths=(
+      "$HOME/bin"
+      "/usr/local/bin"
+    )
+
+    local -a brew_paths=(
+      "/opt/homebrew/bin"
+      "/opt/homebrew/sbin"
+    )
+
+    # Hardcoded GNU paths
+    local -a gnu_utils_paths=(
+      "/opt/homebrew/opt/gpatch/libexec/gnubin"
+      "/opt/homebrew/opt/gnu-which/libexec/gnubin"
+      "/opt/homebrew/opt/make/libexec/gnubin"
+      "/opt/homebrew/opt/gawk/libexec/gnubin"
+      "/opt/homebrew/opt/grep/libexec/gnubin"
+      "/opt/homebrew/opt/gnu-tar/libexec/gnubin"
+      "/opt/homebrew/opt/gnu-sed/libexec/gnubin"
+      "/opt/homebrew/opt/findutils/libexec/gnubin"
+      "/opt/homebrew/opt/coreutils/libexec/gnubin"
+    )
+
+    # --- Populate the global arrays ---
+
+    # 1. Define the BSD path array
+    BSDPATH_array=(
+      $user_paths
+      $brew_paths
+      $base_system_path # The original system path
+    )
+
+    # 2. Define the GNU path array
+    GNUPATH_array=(
+      $gnu_utils_paths  # GNU utils go first
+      $user_paths
+      $brew_paths
+      $base_system_path # The original system path
+    )
+
+    # 3. Define the OFF path array (no brew, no GNU tools)
+    OFF_array=(
+      $user_paths
+      $base_system_path # The original system path only
+    )
+    
+    # --- Set Default State ---
+    # Set the initial path from the default (GNU) array
+    path=($GNUPATH_array)
+    
+    # No 'unset' needed. All 'local' variables are destroyed
+    # when this function exits.
+}
+
+# 3. Run the setup function once.
+_setup_path_toggle
+
+# 4. Clean up the setup function itself so it doesn't pollute the shell
+unset -f _setup_path_toggle
+
+# --- END OF REFACTORED SECTION ---
+
+
+# Function to toggle between GNU, BSD, and OFF states
+#
+# *** VERSION WITH SAFETY CHECK - V5 (Three States) ***
+#
+toggle() {
+      # --- START: Safety Interlock ---
+
+      # Convert the current path and the three reference paths into
+      # simple, space-delimited strings for comparison.
+      local current_path_str="$path"
+      local bsd_path_str="$BSDPATH_array"
+      local gnu_path_str="$GNUPATH_array"
+      local off_path_str="$OFF_array"
+
+      # THE CHECK:
+      # If the current path is NOT one of the three known states,
+      # then it must be a custom state (like a Venv).
+      if [[ "$current_path_str" != "$bsd_path_str" && "$current_path_str" != "$gnu_path_str" && "$current_path_str" != "$off_path_str" ]]; then
+            # Abort the function with an error message.
+            print -P $'\n%F{red}--- TOGGLE DISABLED ---%f'
+            echo "Your PATH is in a custom state (e.g., a Venv is active)."
+            echo "Toggle is disabled to prevent breaking your environment."
+            print -P $'%F{red}-----------------------%f'
+            return 1 # Abort
+      fi
+      # --- END: Safety Interlock ---
+
+      # Handle explicit 'toggle off' command
+      if [[ "$1" == "off" ]]; then
+            path=($OFF_array)
+            export GNU_UTILS_ACTIVE=-1
+            echo "All tools disabled - using minimal system path only"
+            return 0
+      fi
+
+      # If we made it here, the path is "clean" and we can proceed.
+      # If in OFF state, return to GNU; otherwise toggle between GNU and BSD
+      if [[ $GNU_UTILS_ACTIVE -eq -1 || $GNU_UTILS_ACTIVE -eq 0 ]]; then
+            path=($GNUPATH_array)
+            export GNU_UTILS_ACTIVE=1
+            echo "GNU utilities enabled"
+      else
+            path=($BSDPATH_array)
+            export GNU_UTILS_ACTIVE=0
+            echo "GNU utilities disabled - using macOS default utilities"
+      fi
+}
+
+# Configure vcs_info for git prompt
+autoload -Uz vcs_info
+zstyle ':vcs_info:*' enable git
+zstyle ':vcs_info:git:*' formats ' %F{green}%b%f '
+zstyle ':vcs_info:git:*' actionformats ' %F{green}%b%f %F{red}(%a)%f '
+
+# Update vcs_info before each prompt
+precmd_vcs_info() { vcs_info }
+precmd_functions+=( precmd_vcs_info )
+
+precmd() {
+      # Check for an active Python virtual environment
+      if [[ -n "$VIRTUAL_ENV" ]]; then
+         # Format the venv name, e.g., "(webui) "
+         venv_prompt=" (%F{magenta}$(basename $VIRTUAL_ENV)%f)"
+      else
+         venv_prompt=""
+      fi
+
+      # Check GNU utilities status
+      if [[ $GNU_UTILS_ACTIVE -eq 1 ]]; then
+         gnu_prompt=$' \uF8FF %F{green}[GNU]%f'
+      elif [[ $GNU_UTILS_ACTIVE -eq 0 ]]; then
+         gnu_prompt=$' \uF8FF %F{yellow}[BSD]%f'
+      else
+         gnu_prompt=$' \uF8FF %F{red}[OFF]%f'
+      fi
+
+      # Use vcs_info for git branch (already populated by precmd_vcs_info)
+      # vcs_info_msg_0_ contains the formatted branch info or empty string
+      git_prompt="${vcs_info_msg_0_:- }"
+
+      # Assemble the final prompt
+      PS1="${venv_prompt}${gnu_prompt} %F{white} %F{cyan}%~%f${git_prompt}%F{cyan}➜ %f "
+}
+
+
+### Zsh Enhancements ###
+
+# Load Homebrew plugin paths
+# (Note: This path is for Apple Silicon. Use /usr/local/share for Intel)
+brew_share="/opt/homebrew/share"
+
+# Load Syntax Highlighting (must be loaded relatively early)
+if [[ -f "${brew_share}/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]]; then
+   source "${brew_share}/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+fi
+
+# Load Autosuggestions (must be loaded AFTER syntax-highlighting)
+if [[ -f "${brew_share}/zsh-autosuggestions/zsh-autosuggestions.zsh" ]]; then
+   source "${brew_share}/zsh-autosuggestions/zsh-autosuggestions.zsh"
+fi
+
+# Initialize the Zsh completion system with lazy-loading
+# Only regenerate completions cache once per day
+autoload -Uz compinit
+if [[ -n ~/.zcompdump(#qN.mh+24) ]]; then
+  compinit
+else
+  compinit -C
+fi
+
+# Improve completion behavior
+zstyle ':completion:*' menu select # Enable menu selection
