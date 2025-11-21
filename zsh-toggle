@@ -14,7 +14,6 @@ setopt HIST_FIND_NO_DUPS # When searching, show the newest entry of a duplicate
 # My Alias List
 alias ..='cd ..'
 alias ls='ls -Al'
-alias la='ls -A'
 alias l='/bin/ls'
 alias attach='tmux a'
 alias new='tmux'
@@ -33,7 +32,6 @@ alias boutdated='brew outdated'
 alias bsearch='brew search'
 alias bupgrade-all='brew update && brew upgrade && brew cleanup'
 alias bremove='brew remove'
-
 
 backup-exaggerated() {
    pushd "$HOME" > /dev/null || return 1
@@ -233,3 +231,4 @@ fi
 
 # Improve completion behavior
 zstyle ':completion:*' menu select # Enable menu selection
+
