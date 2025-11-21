@@ -32,6 +32,20 @@ alias boutdated='brew outdated'
 alias bsearch='brew search'
 alias bupgrade-all='brew update && brew upgrade && brew cleanup'
 alias bremove='brew remove'
+alias binstall='brew install'
+alias breinstall='brew reinstall'
+alias binfo='brew info'
+alias blist='brew list'
+alias bdoctor='brew doctor'
+alias bcleanup='brew cleanup'
+alias bdeps='brew deps --tree'
+alias bneeds='brew uses --installed'
+alias bleaves='brew leaves'
+alias bservices='brew services list'
+alias bstart='brew services start'
+alias bstop='brew services stop'
+alias brestart='brew services restart'
+
 
 backup-exaggerated() {
    pushd "$HOME" > /dev/null || return 1
